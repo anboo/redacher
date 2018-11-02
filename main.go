@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sort"
 	"strings"
 	"time"
 )
@@ -26,14 +25,16 @@ type post struct {
 var posts []post
 var loaded bool = false
 
-func boundedParallelGet(url string, parallel int, vk easyvk.VK) []result {
+func boundedParallelGet(url string, vk easyvk.VK) []result {
 	resultsChan := make(chan *result)
 
 	defer func() {
 		close(resultsChan)
 	}()
 
-	for i := 0; i < parallel; i++ {
+    i := 0
+
+	for {
 		go func(i int, url string) {
 			_, err := http.Get(url)
 
@@ -42,8 +43,6 @@ func boundedParallelGet(url string, parallel int, vk easyvk.VK) []result {
 			}
 
 			result := &result{}
-			result.index = i
-			result.err = err
 
 			doc, _ := goquery.NewDocument(url)
 
@@ -83,43 +82,22 @@ func boundedParallelGet(url string, parallel int, vk easyvk.VK) []result {
 
 			loaded = true
 			resultsChan <- result
+			i += 1
 		}(i, url)
 
 		if i % 2 == 0 {
 			<-time.After(1 * time.Second)
 		}
 	}
-
-	var results []result
-
-	for {
-		result := <-resultsChan
-		results = append(results, *result)
-
-		if len(results) == parallel {
-			break
-		}
-	}
-
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].index < results[j].index
-	})
-
-	return results
 }
 
 func main() {
-	benchmark := func(url string, concurrency int) string {
-		startTime := time.Now()
-
+	benchmark := func(url string) {
 		vk, err := easyvk.WithAuth(os.Getenv("VK_EMAIL"), os.Getenv("VK_PASSWORD"), "6278780", "friends,wall,photos"); if err != nil {
 			fmt.Println("Error publish post: " + err.Error())
 		}
 
-		results := boundedParallelGet(url, concurrency, vk)
-		seconds := time.Since(startTime).Seconds()
-		tmplate := "%d bounded parallel requests: %d in %v"
-		return fmt.Sprintf(tmplate, concurrency, len(results), seconds)
+		boundedParallelGet(url, vk)
 	}
 
 	err := godotenv.Load(); if err != nil {
@@ -127,5 +105,5 @@ func main() {
 		panic("Error loading configuration")
 	}
 
-	fmt.Println(benchmark("https://vk.com/wall-77694980?own=1", 10000))
+	benchmark("https://vk.com/wall-460389?own=1")
 }
