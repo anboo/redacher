@@ -1,0 +1,2 @@
+# redacher
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/b873a400b7bd462da8cae75ef199121d)](https://app.codacy.com/app/anboo/redacher?utm_source=github.com&utm_medium=referral&utm_content=anboo/redacher&utm_campaign=Badge_Grade_Dashboard)
